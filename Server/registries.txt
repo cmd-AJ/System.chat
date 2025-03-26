@@ -1,4 +1,1 @@
-Juan,127.0.1
-Peter,127.0.1
-guest,::1
 PAPI,::1

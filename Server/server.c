@@ -148,6 +148,7 @@
                             if (file == NULL) {
                                 sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\",\"Error Getting OPENING FILE \": \"Descripción del error\",\"timestamp\": \"%s\"}", timestamp);
                                 perror("Error opening file");
+                                pthread_mutex_unlock(&file_mutex);  
                                 return 1;
                             }
         
@@ -186,6 +187,7 @@
                                     if (file == NULL) {
                                         sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"error\": \"Error opening file\", \"timestamp\": \"%s\"}", timestamp);
                                         perror("Error opening file");
+                                        pthread_mutex_unlock(&file_mutex);  
                                         return 1;
                                     }
 
@@ -350,6 +352,7 @@
                             FILE *file = fopen("registries.txt", "r");  // Open file for reading
                             if (file == NULL) {
                                 perror("Error opening file");
+                                pthread_mutex_unlock(&file_mutex);  
                                 return 1;
                             }
                         
@@ -404,30 +407,36 @@
                            
                         }
 
-                        if ((strcmp(type, "change_status") == 0))
-                        {
+                        if (strcmp(type, "disconnect") == 0) {
                             char *user = get(&table, "sender");
-                            char *content = get(&table, "content");
+                            char ip[128];
+                            char name[128];
+                            lws_get_peer_addresses(lws_get_network_wsi(wsi), lws_get_socket_fd(wsi), name, sizeof(name), ip, sizeof(ip));
+                        
+                            pthread_mutex_lock(&file_mutex);
+                        
                             
-                            printf("Status %s",session->status);
-                            
-                            strcpy(session->status, content); 
-
-
-                            char hostname[256];
-                            if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"content\": { \"user\": %s, \"status\": %s  }, \"timestamp\": \"%s\"}", hostname,session->user_id, session->status ,timestamp);
-                            } else {
-                                printf("Failed to get server hostname\n");
+                            FILE *file = fopen("registries.txt", "w");
+                            if (file == NULL) {
+                                sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\",\"Error Getting OPENING FILE \": \"Descripción del error\",\"timestamp\": \"%s\"}", timestamp);
+                                perror("Error opening file");
+                                pthread_mutex_unlock(&file_mutex);  
+                                return 1;
                             }
-                           
+                        
+                            fprintf(file, "%s,%s\n", user, ip);  // Example: writing the user and IP address to the file
+                        
+                            fclose(file);  // Close the file after writing
+                        
+                            pthread_mutex_unlock(&file_mutex);
+                        
+                            // Prepare the response message for the disconnected user
+                            sprintf(cleaned_message, "{\"type\": \"user_disconnected\", \"sender\": \"%s\", \"content\": \"%s Ha salido\", \"timestamp\": \"%s\"}", session->user_id, session->user_id, timestamp);
                         }
-
-
-
+                        
 
                     }else{
-                        cleaned_message = "ERROR IN JSON FORMAT";
+                        sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\",\"content\": \"Error JSON FORMAT INVALID\",\"timestamp\": \"%s\"}", timestamp);
                     }
                     
                     
