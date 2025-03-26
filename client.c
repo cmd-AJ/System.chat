@@ -107,7 +107,7 @@ void message_send(const char *type, const char *target, const char *content){
 }
 
 static const struct lws_protocols protocols[] = {
-    { "chat-protocol", callback_chat, 0, 4096 },
+    { "chat-protocol", chat_callback, 0, 4096 },
     { NULL, NULL, 0, 0 }
 };
 
