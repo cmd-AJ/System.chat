@@ -3,6 +3,7 @@
 #include <string.h>
 #include <libwebsockets.h>
 
+
 static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
     switch (reason) {
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
