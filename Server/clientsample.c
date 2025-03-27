@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libwebsockets.h>
+#include "hash.h"
 
 
 static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
     switch (reason) {
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
-            printf("Conexión establecida con el servidor WebSocket\n");
+            printf("Conexión establecida con el servidor WebSocket 101\n");
             lws_callback_on_writable(wsi);  // Request to write immediately
             break;
 
@@ -16,7 +17,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void
             break;
 
         case LWS_CALLBACK_CLIENT_WRITEABLE: {
-            const char *msg = "{\"type\": \"register\", \"sender\": \"usuario1\"}";
+            const char *msg = "{\"type\": \"disconnect\", \"sender\": \"PAPI\", \"content\": \"null\"}";
             size_t msg_len = strlen(msg);
             unsigned char buf[LWS_PRE + msg_len];  // Buffer with LWS padding
             memcpy(&buf[LWS_PRE], msg, msg_len);

@@ -8,8 +8,8 @@ To run Server use the command to compile
 
 Server
 ---
-gcc -o websocket_client server.c -lwebsockets
+gcc server.c hash.c -o server_program -lwebsockets 
 
 Client
 ---
-gcc -o websocket_client clientsample.c -lwebsockets 
+gcc client.c -o client -lwebsockets 

@@ -1,0 +1,17 @@
+# Use a base image with necessary dependencies
+FROM gcc:latest
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy the source code to the container
+COPY . .
+
+# Install dependencies (like libwebsockets)
+RUN apt-get update && apt-get install -y libwebsockets-dev
+
+# Build the program
+RUN gcc server.c hash.c -o server_program -lwebsockets
+
+# Command to run when the container starts
+CMD ["./server_program"]
