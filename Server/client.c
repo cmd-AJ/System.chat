@@ -76,7 +76,7 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
             printf("Conexión establecida con el servidor WebSocket\n");
             web_socket = wsi;
-            message_send("status", NULL, "ACTIVO");
+            
             lws_callback_on_writable(wsi);
             break;
 
@@ -138,7 +138,7 @@ int main() {
 
     memset(&ccinfo, 0, sizeof(ccinfo));
     ccinfo.context = context;
-    ccinfo.address = "localhost";  
+    ccinfo.address = "3.147.6.53";  
     ccinfo.port = 9000;           
     ccinfo.path = "/";
     ccinfo.host = lws_canonical_hostname(context);
