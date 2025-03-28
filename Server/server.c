@@ -156,7 +156,7 @@
                             lws_get_peer_addresses(lws_get_network_wsi(wsi), lws_get_socket_fd(wsi), name, sizeof(name), ip, sizeof(ip));
 
         
-                            printf("Searching for registries\n");  
+
                             pthread_mutex_lock(&file_mutex);
                             FILE *file = fopen("registries.txt", "r");  // Open file for reading
                             if (file == NULL) {
@@ -451,7 +451,7 @@
                     memcpy(&buf[LWS_PRE], cleaned_message, len);
         
                     // Send back the message
-                    printf(cleaned_message);
+                    printf("%s, \n",cleaned_message);
                     if (lws_write(wsi, &buf[LWS_PRE], len, LWS_WRITE_TEXT) < 0) {
                         printf("Error sending message back to client\n");
                     }
