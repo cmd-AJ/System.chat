@@ -332,6 +332,8 @@
                                 pthread_mutex_unlock(&file_mutex);  
                                 return 1;
                             }
+
+                            char status[30]= "NO DISPONIBLE";
                         
                             char buffer[BUFFER_SIZE];  // Buffer to hold each line
                             while (fgets(buffer, sizeof(buffer), file)) {  // Read one line at a time
@@ -342,11 +344,25 @@
                         
                                 char *user = strtok(temp_buffer, ",");
                                 char *ip_address = strtok(NULL, ",");
+                                
+
+                                
                         
                                 if (user != NULL) {  // Ensure valid tokens
                                     if (strcmp(user_target, user) == 0) {
                                         printf("GOT ONE ALIVE\n");
                                         printf("IP Address: %s\n", ip_address);
+                                        for (int i = 0; i < MAX_CLIENTS; i++) {
+                                            if (session_table[i] != NULL) {
+            
+                                                if (strcmp(session_table[i]->user_id, user)==0){
+                                                     strcpy(status, session_table[i]->status); 
+                                                }
+                                                
+            
+                                            }
+                                        }
+
                                     }
                                 }
                             }
@@ -356,9 +372,9 @@
 
                             char hostname[256];
                             if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"target\": %s, \"timestamp\": \"%s\"}", hostname,user_target, timestamp);
+                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"target\": \"%s\" ,\"content\": { \"ip\": %s, \"status\": %s  }, \"timestamp\": \"%s\"}", hostname,session->user_id,ip_address, status ,session->status ,timestamp);
                             } else {
-                                printf("Failed to get server hostname\n");
+                                sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot Find Hostname\", \"timestamp\": \"%s\"}", timestamp);
                             }
 
 
@@ -379,7 +395,7 @@
                             if (gethostname(hostname, sizeof(hostname)) == 0) {
                                 sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"content\": { \"user\": %s, \"status\": %s  }, \"timestamp\": \"%s\"}", hostname,session->user_id, session->status ,timestamp);
                             } else {
-                                printf("Failed to get server hostname\n");
+                                sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot Find Hostname\", \"timestamp\": \"%s\"}", timestamp);
                             }
                            
                         }
@@ -393,7 +409,7 @@
                         
                             pthread_mutex_lock(&file_mutex);
                         
-                            FILE *file = fopen("registries.txt", "w");  // ⚠️ This overwrites the file! Use "a" for appending.
+                            FILE *file = fopen("registries.txt", "w");  
                             if (file == NULL) {
                                 sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot open file\", \"timestamp\": \"%s\"}", timestamp);
                                 perror("Error opening file");
@@ -416,7 +432,7 @@
 
                             lws_close_reason(wsi, LWS_CLOSE_STATUS_NORMAL, (unsigned char *)cleaned_message, strlen(cleaned_message));
                         
-                            return -1;  // 🔴 **Returning -1 tells LWS to close the connection**
+                            return -1; 
                         }
                         
 

@@ -17,7 +17,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void
             break;
 
         case LWS_CALLBACK_CLIENT_WRITEABLE: {
-            const char *msg = "{\"type\": \"disconnect\", \"sender\": \"PAPI\", \"content\": \"null\"}";
+            const char *msg = "{\"type\": \"register\", \"sender\": \"Juan\", \"content\": \"null\"}";
             size_t msg_len = strlen(msg);
             unsigned char buf[LWS_PRE + msg_len];  // Buffer with LWS padding
             memcpy(&buf[LWS_PRE], msg, msg_len);

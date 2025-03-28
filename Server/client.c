@@ -106,6 +106,7 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                 }
             }
             else if (strstr(buffer, "\"type\": \"list_users_response\"") != NULL) {
+                printf(buffer);
                 char sender[100] = {0};
                 char content[500] = {0};
                 char timestamp[20] = {0};
@@ -135,6 +136,9 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
             }
             else if (strstr(buffer, "\"type\": \"user_info_response\"") != NULL) {
                 // Respuesta con información de un usuario
+
+                printf(buffer);
+
                 char target[100] = {0};
                 char ip[100] = "No disponible";
                 char status[20] = "No disponible";
