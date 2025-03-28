@@ -163,20 +163,20 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                 printf(" Actualizado: %s\n", timestamp);
                 printf("══════════════════════════════\n");
             }
-            else if (strstr(buffer, "\"type\": \"broadcast\"") != NULL) {
+            else if (strstr(buffer, "\"broadcast\"") != NULL) {
                 // Mensaje broadcast recibido
                 char sender[100] = {0};
                 char content[200] = {0};
                 char timestamp[20] = {0};
                 
-                if (sscanf(buffer, "{\"type\":\"broadcast\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
+                if (sscanf(buffer, "{\"type\":%*[ ]\"%*[^\"]\",%*[ ]\"sender\":%*[ ]\"%[^\"]\",%*[ ]\"content\":%*[ ]\"%[^\"]\",%*[ ]\"timestamp\":%*[ ]\"%[^\"]\"}",
                           sender, content, timestamp) == 3) {
                     if (strcmp(sender, username) != 0) {
                         printf("\n[%s] %s [%s]\n", sender, content, timestamp);
                     }
                 }
             }
-            else if (strstr(buffer, "\"type\": \"private\"") != NULL) {
+            else if (strstr(buffer, "\"private\"") != NULL) {
                 // Mensaje privado recibido
                 char sender[100] = {0};
                 char target[100] = {0};
