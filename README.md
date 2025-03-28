@@ -4,6 +4,9 @@
 BY AJ and ABBY
 
 
+### Libreria Libwebsocket
+libwebsockets es una biblioteca C para implementar servidores y clientes WebSocket eficientes. Permite gestionar conexiones WebSocket en tiempo real mediante el uso de eventos, y es adecuada para aplicaciones de alto rendimiento. La biblioteca permite definir protocolos personalizados y manejar eventos como la recepción de mensajes o la desconexión de clientes mediante callbacks. En un entorno multihilo, libwebsockets puede trabajar con múltiples hilos, y se debe utilizar mutexes para proteger el acceso a las estructuras compartidas. 
+
 To run Server use the command to compile 
 
 Server
@@ -34,13 +37,13 @@ LWS_CALLBACK_ESTABLISHED: Hace el primer contacto con el cliente y el server.
 LWS_CALLBACK_RECEIVE: Recibe información en string de tipo JSON 
 Se parsea el JSON a un HASH y primero consigue el tipo y para cada tipo se parsea los componentes indicados de cada tipo.
 
-En la siguiente parte se explica que hace si identifica el tipo 
+En la siguiente parte se explica que hace si identifica el tipo que se registra para realizar un callback
+
 
 register:
 Se consigue primero el nombre y la IP de la persona
 Revisa el usuario y IP de la persona 
 Lo registra el usuario y la IP se escriben en un archivo txt utilizando mutex para que pueda leer cada linea sin datos dirty
-
 Leyendo cada linea revisa si esta o no el usuario ya registrado o no.
         
 Si encuentra uno da un response de error
@@ -53,10 +56,8 @@ Se lee el valor de target del hash para conseguir el usuario objetivo y el conte
 Por cada sesion que hay se busca el nombre del usuario y se envia un json con el contenido del mensaje al usuario objetivo.
 
 
-
 broadcast: 
-Se lee el valor de target del hash para conseguir el usuario objetivo y el contenido de mensaje
-
+Se lee el valor de target del hash para conseguir el usuario objetivo y el contenido de mensaje.
 Por cada sesion que hay se envia el json.
 
 
@@ -65,7 +66,7 @@ Se muestra todos los usuarios del server
 
 
 user_info:
-Consigue dentro del HASH un usuario objetivo
+Consigue dentro del HASH un usuario objetivo.
 Leemos los archivo y por cada linea. revisar si encuentra el usuario y conseguimos la IP y el nombre del usuario
 
 
@@ -77,7 +78,7 @@ Disconnect:
 Se bloquea el arhivo para podes escribir a todos los usuarios que estan conectados. El que se va a desconectar no se escribe en el archivo, una vez realizado esto se debloquea el mutex. 
 
     
-Funciones Extras dentro de hash.c
+## Funciones Extras dentro de hash.c
 
 hash(const char *key)
 Crea un objeto HASH donde guardamos el valor y la llave tipo JSON
