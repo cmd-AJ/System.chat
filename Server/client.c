@@ -3,107 +3,220 @@
 #include <pthread.h>
 #include <libwebsockets.h>
 #include <string.h>
+#include <time.h>
 
 #define MAX_MSG_LEN 512   // tamaño mensaje
+#define MAX_CLIENTS 100
+
 struct lws *web_socket = NULL;
 const char *username = "usuario1";
-int running = 1; //cierre programa
+int running = 1;
 
-//envio de mensajes al serv
-void message_send(const char *type, const char *target, const char *content){
+void message_send(const char *type, const char *target, const char *content) {
+    if (!web_socket) {
+        printf("\n[ERROR] No hay conexión WebSocket activa\n");
+        return;
+    }
+
     char message[MAX_MSG_LEN];
-    //hora actual
     time_t now = time(NULL);
     struct tm *tm_info = localtime(&now);
     char time_str[20];
-    strftime(time_str, sizeof(time_str), "%H:%M:%S", tm_info); //formato tiempo 
-    //publicos
-    if (strcmp(type, "public") == 0) {
-        snprintf(message, sizeof(message), "%s", content);
-        //Mostrar mensaje con nom de ususario y tiempo
-        printf("%s: %s [%s]\n", username, content, time_str);
-    } else {
-        //privados y otros
-        snprintf(message, sizeof(message), "{\"type\": \"%s\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}", 
-                 type, username, target ? target : "", content ? content : "", time_str);
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+
+    if (strcmp(type, "register") == 0) {
+        snprintf(message, sizeof(message), 
+                "{\"type\":\"register\",\"sender\":\"%s\",\"timestamp\":\"%s\"}",
+                username, time_str);
+    }
+    else if (strcmp(type, "broadcast") == 0) {
+        snprintf(message, sizeof(message), 
+                "{\"type\":\"broadcast\",\"sender\":\"%s\",\"content\":\"%s\",\"timestamp\":\"%s\"}",
+                username, content, time_str);
+        printf("\n[TÚ] %s [%s]\n", content, time_str);
+    }
+    else if (strcmp(type, "private") == 0) {
+        snprintf(message, sizeof(message), 
+                "{\"type\":\"private\",\"sender\":\"%s\",\"target\":\"%s\",\"content\":\"%s\",\"timestamp\":\"%s\"}",
+                username, target, content, time_str);
+        printf("\n[PRIVADO A %s] %s [%s]\n", target, content, time_str);
+    }
+    else if (strcmp(type, "list_users") == 0) {
+        snprintf(message, sizeof(message), 
+                "{\"type\":\"list_users\",\"sender\":\"%s\",\"timestamp\":\"%s\"}",
+                username, time_str);
+        printf("\n[SOLICITANDO lista de usuarios...]\n");
+    }
+    else if (strcmp(type, "user_info") == 0) {
+        snprintf(message, sizeof(message), 
+                "{\"type\":\"user_info\",\"sender\":\"%s\",\"target\":\"%s\",\"timestamp\":\"%s\"}",
+                username, target, time_str);
+        printf("\n[SOLICITANDO info de %s...]\n", target);
+    }
+    else if (strcmp(type, "change_status") == 0) {
+        if (strcmp(content, "ACTIVO") == 0 || strcmp(content, "OCUPADO") == 0 || 
+            strcmp(content, "INACTIVO") == 0) {
+            snprintf(message, sizeof(message), 
+                    "{\"type\":\"change_status\",\"sender\":\"%s\",\"content\":\"%s\",\"timestamp\":\"%s\"}",
+                    username, content, time_str);
+            printf("\n[SOLICITANDO cambio de estado a %s...]\n", content);
+        } else {
+            printf("\n[ERROR] Estado debe ser: ACTIVO, OCUPADO o INACTIVO\n");
+            return;
+        }
+    }
+    else if (strcmp(type, "disconnect") == 0) {
+        snprintf(message, sizeof(message), 
+                "{\"type\":\"disconnect\",\"sender\":\"%s\",\"content\":\"%s\",\"timestamp\":\"%s\"}",
+                username, content ? content : "Saliendo", time_str);
     }
 
-    //enviar menmsaje
-    unsigned char buf[LWS_PRE + MAX_MSG_LEN];
-    memset(buf, 0, sizeof(buf));
-    memcpy(buf+ LWS_PRE, message, strlen(message));
-
-    lws_write(web_socket, buf + LWS_PRE, strlen(message), LWS_WRITE_TEXT); //al server
-}
-//estados
-void status(const char *new_status){
-    message_send("status", NULL, new_status);
-}
-//conectados
-void list_users() {
-    message_send("list", NULL, NULL);
-}
-//info ususario
-void user_info(const char *target) {
-    message_send("info", target, NULL);
-}
-void message_text(const char *message) {
-    printf("%s\n", message);
+    unsigned char buf[LWS_PRE + MAX_MSG_LEN] = {0};
+    memcpy(buf + LWS_PRE, message, strlen(message));
+    lws_write(web_socket, buf + LWS_PRE, strlen(message), LWS_WRITE_TEXT);
 }
 
-//ayuda
-void show_help(){
-    message_text("-- Comandos --");
-    message_text("    /help -- Ayuda    ");
-    message_text("    /msg [usuario] [mensaje] -- mensaje privado   ");
-    message_text("    /exit -- salir de programa    ");
-    message_text("    /status [estado] -- estado del usuario y cambio de estado    ");
-    message_text("    /list -- lista usuarios   ");
-    message_text("    /info [usuario] -- informacion usuarios    ");
-}
-//recibir mensajes
-void *receive_messages(void *context) {
-    while (running) {
-        lws_service((struct lws_context *)context, 0); //escucha del server
-    }
-    return NULL;
-}
-
-
-//SERVER (maneja conexion, recibir mensajes, cierre de sesion, etc)
-static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len){
+// Callback de WebSocket
+static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
     switch (reason) {
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
-            printf("Conexión establecida con el servidor WebSocket\n");
+            printf("\n[CONEXIÓN ESTABLECIDA - Registro automático como %s]\n", username);
             web_socket = wsi;
-            message_send("status", NULL, "ACTIVO");
-            lws_callback_on_writable(wsi);
+            message_send("register", NULL, NULL); // Registro automático
             break;
 
-        case LWS_CALLBACK_CLIENT_RECEIVE:{ //registro del mensaje (servidor)
-            char buffer[MAX_MSG_LEN];
+        case LWS_CALLBACK_CLIENT_RECEIVE: {
+            char buffer[MAX_MSG_LEN + 1];
             strncpy(buffer, (char *)in, len);
             buffer[len] = '\0';
 
-            char type[MAX_MSG_LEN], sender[MAX_MSG_LEN], content[MAX_MSG_LEN], timestamp[20];
-            
-            //parsear JSON
-            int parsed = sscanf(buffer, "{\"type\": \"%[^\"]\", \"sender\": \"%[^\"]\", \"content\": \"%[^\"]\", \"timestamp\": \"%[^\"]\"}",
-                type, sender, content, timestamp);
-            if (parsed == 4) {
-                if (strcmp(type, "status") == 0) {
-                    printf("Estado de %s: %s\n", sender, content);
-                } else {
-                    //mostrar mensaje con  nom de usuario y hora en terminal
-                    printf("%s: %s [%s]\n", sender, content, timestamp);
+            if (len == 0 || buffer[0] != '{') {
+                break;
+            }
+
+            if (strstr(buffer, "\"type\": \"register_success\"") != NULL) {
+                char sender[100] = {0};
+                char content[200] = {0};
+                char timestamp[20] = {0};
+                
+                if (sscanf(buffer, "{\"type\":\"register_success\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
+                          sender, content, timestamp) == 3) {
+                    printf("\n[REGISTRO AUTOMÁTICO EXITOSO] %s [%s]\n", content, timestamp);
                 }
             }
-            printf("\n");
+            else if (strstr(buffer, "\"type\": \"list_users_response\"") != NULL) {
+                char sender[100] = {0};
+                char content[500] = {0};
+                char timestamp[20] = {0};
+                
+                if (sscanf(buffer, "{\"type\":\"list_users_response\",\"sender\":\"%[^\"]\",\"content\":%[^,],\"timestamp\":\"%[^\"]\"}",
+                          sender, content, timestamp) == 3) {
+                    printf("\n═════ USUARIOS CONECTADOS ═════\n");
+                    
+                    char *ptr = content;
+                    while (*ptr) {
+                        if (*ptr == '[' || *ptr == ']' || *ptr == '"') *ptr = ' ';
+                        ptr++;
+                    }
+                    
+                    char *user = strtok(content, ",");
+                    while (user != NULL) {
+                        while (*user == ' ') user++;
+                        char *end = user + strlen(user) - 1;
+                        while (end > user && *end == ' ') end--;
+                        *(end + 1) = '\0';
+                        
+                        if (*user) printf("• %s\n", user);
+                        user = strtok(NULL, ",");
+                    }
+                    printf("═══════════════════════════════\n");
+                }
             }
+            else if (strstr(buffer, "\"type\": \"user_info_response\"") != NULL) {
+                // Respuesta con información de un usuario
+                char target[100] = {0};
+                char ip[100] = "No disponible";
+                char status[20] = "No disponible";
+                char timestamp[20] = "No disponible";
+                
+                sscanf(buffer, "{\"type\":\"user_info_response\"%*[^,],\"target\":\"%[^\"]\",", target);
+                sscanf(buffer, "%*[^,]\"content\":{\"ip\":\"%[^\"]\",\"status\":\"%[^\"]\"}", ip, status);
+                sscanf(buffer, "%*[^,]\"timestamp\":\"%[^\"]\"", timestamp);
+
+                printf("\n════ INFORMACIÓN DE USUARIO ════\n");
+                printf(" Nombre: %s\n", target[0] ? target : "No disponible");
+                printf(" Estado: %s\n", status);
+                printf(" IP: %s\n", ip);
+                printf(" Actualizado: %s\n", timestamp);
+                printf("══════════════════════════════\n");
+            }
+            else if (strstr(buffer, "\"type\": \"broadcast\"") != NULL) {
+                // Mensaje broadcast recibido
+                char sender[100] = {0};
+                char content[200] = {0};
+                char timestamp[20] = {0};
+                
+                if (sscanf(buffer, "{\"type\":\"broadcast\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
+                          sender, content, timestamp) == 3) {
+                    if (strcmp(sender, username) != 0) {
+                        printf("\n[%s] %s [%s]\n", sender, content, timestamp);
+                    }
+                }
+            }
+            else if (strstr(buffer, "\"type\": \"private\"") != NULL) {
+                // Mensaje privado recibido
+                char sender[100] = {0};
+                char target[100] = {0};
+                char content[200] = {0};
+                char timestamp[20] = {0};
+                
+                if (sscanf(buffer, "{\"type\":\"private\",\"sender\":\"%[^\"]\",\"target\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
+                          sender, target, content, timestamp) == 4) {
+                    printf("\n[PRIVADO de %s] %s [%s]\n", sender, content, timestamp);
+                }
+            }
+            else if (strstr(buffer, "\"type\": \"status_update\"") != NULL) {
+                // Actualización de estado de un usuario
+                char user[100] = {0};
+                char new_status[20] = {0};
+                char timestamp[20] = {0};
+                
+                if (sscanf(buffer, "{\"type\":\"status_update\",\"sender\":\"%*[^\"]\","
+                           "\"content\":{\"user\":\"%[^\"]\",\"status\":\"%[^\"]\"},\"timestamp\":\"%[^\"]\"}",
+                          user, new_status, timestamp) == 3) {
+                    printf("\n[ESTADO ACTUALIZADO] %s ahora está %s [%s]\n", 
+                          user, new_status, timestamp);
+                }
+            }
+            else if (strstr(buffer, "\"type\": \"user_disconnected\"") != NULL) {
+                char sender[100] = {0};
+                char content[200] = {0};
+                char timestamp[20] = {0};
+                
+                if (sscanf(buffer, "{\"type\":\"user_disconnected\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
+                          sender, content, timestamp) == 3) {
+                    printf("\n[DESCONEXIÓN] %s [%s]\n", content, timestamp);
+                }
+            }
+            else if (strstr(buffer, "\"type\": \"error\"") != NULL) {
+                char sender[100] = {0};
+                char content[200] = {0};
+                char timestamp[20] = {0};
+                
+                if (sscanf(buffer, "{\"type\":\"error\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
+                          sender, content, timestamp) == 3) {
+                    printf("\n[ERROR] %s [%s]\n", content, timestamp);
+                }
+            }
+            break;
+        }
+
+        case LWS_CALLBACK_CLIENT_WRITEABLE:
             break;
 
         case LWS_CALLBACK_CLOSED:
-            printf("Conexión cerrada\n");
+            printf("\n[CONEXIÓN CERRADA]\n");
+            running = 0;
             break;
 
         default:
@@ -112,34 +225,51 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
     return 0;
 }
 
-static const struct lws_protocols protocols[] = {
-    { "chat-protocol", chat_callback, 0, 4096 },
-    { NULL, NULL, 0, 0 }
+void show_help() {
+    printf("\n═════ COMANDOS DISPONIBLES ═════\n");
+    printf("/help               Muestra esta ayuda\n");
+    printf("/list               Lista usuarios conectados\n");
+    printf("/info <usuario>     Muestra información de un usuario\n");
+    printf("/status <ESTADO>    Cambia tu estado (ACTIVO/OCUPADO/INACTIVO)\n");
+    printf("/msg <usuario> <msg> Envía mensaje privado\n");
+    printf("/exit               Sale del programa\n");
+    printf("════════════════════════════════\n");
+}
+
+void *receive_messages(void *context) {
+    while (running) {
+        lws_service((struct lws_context *)context, 50);
+    }
+    return NULL;
+}
+
+static struct lws_protocols protocols[] = {
+    {"chat-protocol", chat_callback, 0, MAX_MSG_LEN},
+    {NULL, NULL, 0, 0}
 };
 
 int main() {
-    //iniciar cliente
-    struct lws_context_creation_info info={0};
-    struct lws_client_connect_info ccinfo={0};
-    struct lws_context *context = lws_create_context(&info); //conn
-    struct lws *wsi;
+    struct lws_context_creation_info info;
+    struct lws_client_connect_info ccinfo;
+    struct lws_context *context;
+    pthread_t thread;
 
     memset(&info, 0, sizeof(info));
-    info.port = CONTEXT_PORT_NO_LISTEN;  // No listening server
+    info.port = CONTEXT_PORT_NO_LISTEN;
     info.protocols = protocols;
     info.gid = -1;
     info.uid = -1;
 
     context = lws_create_context(&info);
     if (!context) {
-        fprintf(stderr, "Error al crear el contexto de libwebsockets\n");
-        return -1;
+        fprintf(stderr, "Error al crear el contexto WebSocket\n");
+        return 1;
     }
 
     memset(&ccinfo, 0, sizeof(ccinfo));
     ccinfo.context = context;
-    ccinfo.address = "localhost";  
-    ccinfo.port = 9000;           
+    ccinfo.address = "localhost";
+    ccinfo.port = 9000;
     ccinfo.path = "/";
     ccinfo.host = lws_canonical_hostname(context);
     ccinfo.origin = "origin";
@@ -147,53 +277,72 @@ int main() {
     ccinfo.ssl_connection = 0;
 
     printf("Conectando al servidor...\n");
-
-    wsi = lws_client_connect_via_info(&ccinfo);
-    if (!wsi) {
-        fprintf(stderr, "Error al conectar con el servidor WebSocket\n");
+    if (!lws_client_connect_via_info(&ccinfo)) {
+        fprintf(stderr, "Error al conectar con el servidor\n");
         lws_context_destroy(context);
-        return -1;
-    } else{
-        printf("Conexion exitosa con el servidor WebSocket\n");
+        return 1;
     }
 
-    pthread_t thread;
-    pthread_create(&thread, NULL, receive_messages, (void *)context); //hilo para recibir (permite que el chat se ejecute miesntras esta viendo si recibe mensajes)
+    // Pequeña pausa para estabilizar la conexión
+    usleep(100000);
 
-    while (1) {
+    pthread_create(&thread, NULL, receive_messages, context);
+
+    show_help();
+
+    while (running) {
         char command[MAX_MSG_LEN];
-        printf(">>> ");
+        printf("\n[%s] > ", username);
         fgets(command, MAX_MSG_LEN, stdin);
-        command[strcspn(command, "\n")] =0;
+        command[strcspn(command, "\n")] = '\0';
 
-         if (command[0] != '/'){
-            //Publico
-            message_send("public", NULL, command);
-        }else if (strncmp(command, "/list", 5) == 0) {
-            list_users();
-        } else if (strncmp(command, "/status", 7) == 0) {
-            status(command + 8); //estado nuevo
-        }else if (strncmp(command, "/msg", 4) == 0) {
-            char *target = strtok(command + 5, " "); //nom uusario destinatario
-            char *content = strtok(NULL, ""); //mensaje
-            if (target && content) {
-                message_send("private", target, content);
-            }else {
-                printf("Formato Mensaje Privado: /msg <usuario> <mensaje>\n");
+        if (command[0] == '/') {
+            if (strncmp(command, "/help", 5) == 0) {
+                show_help();
             }
-        }else if (strncmp(command, "/help", 5) == 0){
-            show_help();
-        }else if(strncmp(command, "/exit", 5) == 0){
-            printf("CERRANDO SESION...\n");
-            message_send("disconnect", NULL, "Cierre de sesion");
-            running = 0;
-            break;
-        } else{
-            printf("Comando no reconocido. Usa /help para ver los comandos :) \n");
+            else if (strncmp(command, "/list", 5) == 0) {
+                message_send("list_users", NULL, NULL);
+            }
+            else if (strncmp(command, "/info", 5) == 0) {
+                char *target = strtok(command + 6, " ");
+                if (target) {
+                    message_send("user_info", target, NULL);
+                } else {
+                    printf("\n[ERROR] Debes especificar un usuario\n");
+                }
+            }
+            else if (strncmp(command, "/status", 7) == 0) {
+                char *new_status = strtok(command + 8, " ");
+                if (new_status && (strcmp(new_status, "ACTIVO") == 0 || 
+                    strcmp(new_status, "OCUPADO") == 0 || strcmp(new_status, "INACTIVO") == 0)) {
+                    message_send("change_status", NULL, new_status);
+                } else {
+                    printf("\n[ERROR] Estado no válido. Usa: ACTIVO, OCUPADO o INACTIVO\n");
+                }
+            }
+            else if (strncmp(command, "/msg", 4) == 0) {
+                char *target = strtok(command + 5, " ");
+                char *message = strtok(NULL, "");
+                if (target && message) {
+                    message_send("private", target, message);
+                } else {
+                    printf("\n[ERROR] Formato: /msg <usuario> <mensaje>\n");
+                }
+            }
+            else if (strncmp(command, "/exit", 5) == 0) {
+                message_send("disconnect", NULL, "Saliendo");
+                running = 0;
+            }
+            else {
+                printf("\n[ERROR] Comando no reconocido. Escribe /help para ayuda.\n");
+            }
+        } else if (strlen(command) > 0) {
+            message_send("broadcast", NULL, command);
         }
     }
-    pthread_cancel(thread);
+
     pthread_join(thread, NULL);
     lws_context_destroy(context);
+    printf("\nCliente terminado.\n");
     return 0;
 }
