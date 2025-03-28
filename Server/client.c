@@ -106,38 +106,41 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                 }
             }
             else if (strstr(buffer, "\"type\": \"list_users_response\"") != NULL) {
-                printf(buffer);
-                char sender[100] = {0};
-                char content[500] = {0};
-                char timestamp[20] = {0};
-                
-                if (sscanf(buffer, "{\"type\":\"list_users_response\",\"sender\":\"%[^\"]\",\"content\":%[^,],\"timestamp\":\"%[^\"]\"}",
-                          sender, content, timestamp) == 3) {
-                    printf("\n═════ USUARIOS CONECTADOS ═════\n");
-                    
-                    char *ptr = content;
-                    while (*ptr) {
-                        if (*ptr == '[' || *ptr == ']' || *ptr == '"') *ptr = ' ';
-                        ptr++;
-                    }
-                    
-                    char *user = strtok(content, ",");
-                    while (user != NULL) {
-                        while (*user == ' ') user++;
-                        char *end = user + strlen(user) - 1;
-                        while (end > user && *end == ' ') end--;
-                        *(end + 1) = '\0';
+                printf("Respuesta de lista recibida: %s\n", buffer);
+    
+                // Buscar el contenido entre "content":[ y ]
+                char *content_start = strstr(buffer, "\"content\":[");
+                if (content_start) {
+                    content_start += 10; // Saltar "\"content\":["
+                    char *content_end = strstr(content_start, "]");
+                    if (content_end) {
+                        int content_len = content_end - content_start;
+                        char content[500] = {0};
+                        strncpy(content, content_start, content_len);
                         
-                        if (*user) printf("• %s\n", user);
-                        user = strtok(NULL, ",");
+                        printf("\n═════ USUARIOS CONECTADOS ═════\n");
+                        
+                        // Procesar la lista de usuarios
+                        char *user = strtok(content, ",");
+                        while (user != NULL) {
+                            // Eliminar comillas y espacios
+                            char *ptr = user;
+                            while (*ptr == ' ' || *ptr == '"') ptr++;
+                            char *end = ptr + strlen(ptr) - 1;
+                            while (end > ptr && (*end == ' ' || *end == '"')) end--;
+                            *(end + 1) = '\0';
+                            
+                            if (*ptr) printf("• %s\n", ptr);
+                            user = strtok(NULL, ",");
+                        }
+                        printf("═══════════════════════════════\n");
                     }
-                    printf("═══════════════════════════════\n");
                 }
             }
             else if (strstr(buffer, "\"type\": \"user_info_response\"") != NULL) {
                 // Respuesta con información de un usuario
 
-                printf(buffer);
+                printf("%s", buffer);
 
                 char target[100] = {0};
                 char ip[100] = "No disponible";
@@ -253,7 +256,15 @@ static struct lws_protocols protocols[] = {
     {NULL, NULL, 0, 0}
 };
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc != 4) {
+        fprintf(stderr, "Uso: %s <nombredeusuario> <IPdelservidor> <puertodelservidor>\n", argv[0]);
+        return 1;
+    }
+    username = argv[1];
+    const char *server_ip = argv[2];
+    int server_port = atoi(argv[3]);
+
     struct lws_context_creation_info info;
     struct lws_client_connect_info ccinfo;
     struct lws_context *context;
@@ -273,15 +284,15 @@ int main() {
 
     memset(&ccinfo, 0, sizeof(ccinfo));
     ccinfo.context = context;
-    ccinfo.address = "localhost";
-    ccinfo.port = 9000;
+    ccinfo.address = server_ip;
+    ccinfo.port = server_port;
     ccinfo.path = "/";
     ccinfo.host = lws_canonical_hostname(context);
     ccinfo.origin = "origin";
     ccinfo.protocol = protocols[0].name;
     ccinfo.ssl_connection = 0;
 
-    printf("Conectando al servidor...\n");
+    printf("Conectando al servidor %s:%d como %s...\n", server_ip, server_port, username);
     if (!lws_client_connect_via_info(&ccinfo)) {
         fprintf(stderr, "Error al conectar con el servidor\n");
         lws_context_destroy(context);

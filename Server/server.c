@@ -149,77 +149,41 @@
                         
                         if (strcmp(type, "register") == 0)
                         {
-                            
                             char *register_user = get(&table, "sender");
                             char ip[128];
                             char name[128];
                             lws_get_peer_addresses(lws_get_network_wsi(wsi), lws_get_socket_fd(wsi), name, sizeof(name), ip, sizeof(ip));
 
-        
-
+                            // Asignar el nombre de usuario
+                            strncpy(session->user_id, register_user, sizeof(session->user_id) - 1);
+                            session->user_id[sizeof(session->user_id) - 1] = '\0';
+                            
+                            // Registrar en archivo
                             pthread_mutex_lock(&file_mutex);
-                            FILE *file = fopen("registries.txt", "r");  // Open file for reading
+                            FILE *file = fopen("registries.txt", "a");
                             if (file == NULL) {
-                                sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\",\"Error Getting OPENING FILE \": \"Descripción del error\",\"timestamp\": \"%s\"}", timestamp);
+                                sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"error\": \"Error opening file\", \"timestamp\": \"%s\"}", timestamp);
                                 perror("Error opening file");
                                 pthread_mutex_unlock(&file_mutex);  
                                 return 1;
                             }
-        
-                            char buffer[BUFFER_SIZE];  // Buffer to hold each line
-                            int already_registered = 0;
-                            while (fgets(buffer, sizeof(buffer), file)) {  // Read one line at a time
-                                // Process the line (for example, print it)
-                                char *user = strtok(buffer, ",");
-                                char *ipaddress = strtok(NULL, ",");
-                                                            
-                                if (strcmp(register_user, user) == 0){
-                                    already_registered = 1;
-        
-                                }        
-        
-                            }
-
-                            fclose(file);  // Close the file when done
-                            pthread_mutex_unlock(&file_mutex);
-                            if (already_registered == 0)
-                            {
-                                strncpy(session->user_id, register_user, sizeof(session->user_id) - 1);
-                                session->user_id[sizeof(session->user_id) - 1] = '\0'; // Ensure null termination
                             
-                                char hostname[256];
-                                if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                    sprintf(cleaned_message, "{\"type\": \"register_success\", \"sender\": \"%s\", \"content\": \"Registro Exitoso\", \"userList\": \"[lista]\", \"timestamp\": \"%s\"}", hostname,timestamp);
-                                    
-                                   
-                                    pthread_mutex_lock(&file_mutex);
-                                    FILE *file = fopen("registries.txt", "a");  // Open file for appending
-                                    if (file == NULL) {
-                                        sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"error\": \"Error opening file\", \"timestamp\": \"%s\"}", timestamp);
-                                        perror("Error opening file");
-                                        pthread_mutex_unlock(&file_mutex);  
-                                        return 1;
-                                    }
-
-                                    // Example of appending data
-                                    fprintf(file, "%s,%s\n", register_user, ip);
-                                    // Close the file after writing
-                                    fclose(file);
-                                    pthread_mutex_unlock(&file_mutex);
-
-                                } else {
-                                    sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\",\"content\": \"Error Getting the HOST NAME\",\"timestamp\": \"%s\"}", timestamp);
-                                }
-                                
-                            }else{
-                                char hostname[256];
-                                if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                    sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"%s\",\"content\": \"Usuario Registrado\",\"timestamp\": \"%s\"}",hostname, timestamp);
-                                }else {
-                                    sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\",\"content\": \"Error Getting the HOST NAME\",\"timestamp\": \"%s\"}", timestamp);
-                                }
-                                
+                            //Nuevo registro
+                            fprintf(file, "%s,%s\n", register_user, ip);
+                            fclose(file);
+                            pthread_mutex_unlock(&file_mutex);
+                            
+                            //Confirmacion
+                            char hostname[256];
+                            if (gethostname(hostname, sizeof(hostname)) == 0) {
+                                sprintf(cleaned_message, "{\"type\": \"register_success\", \"sender\": \"%s\", \"content\": \"Registro Exitoso\", \"timestamp\": \"%s\"}", 
+                                    hostname, timestamp);
+                            } else {
+                                sprintf(cleaned_message, "{\"type\": \"register_success\", \"sender\": \"server\", \"content\": \"Registro Exitoso\", \"timestamp\": \"%s\"}", 
+                                    timestamp);
                             }
+                            
+                            printf("Nuevo usuario registrado: %s desde IP: %s\n", register_user, ip);
                            
                         }
             
@@ -294,33 +258,30 @@
                         if ((strcmp(type, "list_users") == 0))
                         {
 
-                            
+                            printf("Solicitud de lista de usuarios recibida de %s\n", session->user_id);
 
-                            char *user = get(&table, "sender");
-                            
-                            char arrayusers[1024] = "[ ";
+                            char arrayusers[1024] = "[";
+                            int first = 1;
 
 
                             for (int i = 0; i < MAX_CLIENTS; i++) {
-                                if (session_table[i] != NULL) {
+                                if (session_table[i] != NULL && strcmp(session_table[i]->user_id, "guest") != 0) {
 
-                                    if (i > 0) {  // Add a comma before each user_id after the first one
-                                        strcat(arrayusers, ", ");
+                                    if (!first) {
+                                        strcat(arrayusers, ",");
                                     }
-                                    char temp[100]; // Temporary buffer to store formatted user_id
-                                    sprintf(temp, "\"%s\"", session_table[i]->user_id);
-                                    strcat(arrayusers, temp); 
-                                    
+                                    first = 0;
+                                    strcat(arrayusers, "\"");
+                                    strcat(arrayusers, session_table[i]->user_id);
+                                    strcat(arrayusers, "\"");                                   
 
                                 }
                             }
                             strcat(arrayusers, " ]"); 
-                            char hostname[256];
-                                if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                    sprintf(cleaned_message, "{\"type\": \"list_users_response\", \"sender\": \"%s\", \"content\": %s, \"timestamp\": \"%s\"}", hostname,arrayusers, timestamp);
-                                } else {
-                                    printf("Failed to get server hostname\n");
-                                }
+                            printf("Lista de usuarios a enviar: %s\n", arrayusers);
+    
+                            sprintf(cleaned_message,"{\"type\":\"list_users_response\",\"sender\":\"server\",\"content\":%s,\"timestamp\":\"%s\"}",
+                                arrayusers, timestamp);
                            
                         }
 
@@ -373,7 +334,7 @@
 
                             char hostname[256];
                             if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"target\": \"%s\" ,\"content\": { \"ip\": %s, \"status\": %s  }, \"timestamp\": \"%s\"}", hostname,session->user_id,ip_address, status ,session->status ,timestamp);
+                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": { \"ip\": \"%s\", \"status\": \"%s\" }, \"timestamp\": \"%s\"}", hostname, session->user_id, ip_address, status, timestamp);
                             } else {
                                 sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot Find Hostname\", \"timestamp\": \"%s\"}", timestamp);
                             }
@@ -464,39 +425,32 @@
                 char timestamp[30];
                 gettime(timestamp, sizeof(timestamp));
 
-                pthread_mutex_lock(&file_mutex);
-                    
-                FILE *file = fopen("registries.txt", "w");  
-                if (file == NULL) {
-                    printf( "{\"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot open file\", \"timestamp\": \"%s\"}",timestamp);
-                    perror("Error opening file");
-                    pthread_mutex_unlock(&file_mutex);
-                    return -1;  // Return -1 to indicate an issue
-                }
-            
-                // Handle client disconnect
                 for (int i = 0; i < MAX_CLIENTS; i++) {
                     if (session_table[i] != NULL && session_table[i]->wsi == wsi) {
-                        // Free the session memory when the client disconnects
+                        printf("Usuario %s desconectado (IP: %s)\n", 
+                            session_table[i]->user_id, session_table[i]->ip_address);
                         
+                        //Notificar desconexion
+                        char notify_msg[1024];
+                        snprintf(notify_msg, sizeof(notify_msg),
+                                "{\"type\":\"user_disconnected\",\"sender\":\"%s\",\"content\":\"%s se ha desconectado\",\"timestamp\":\"%s\"}",
+                                session_table[i]->user_id, session_table[i]->user_id, timestamp);
+                        
+                        for (int j = 0; j < MAX_CLIENTS; j++) {
+                            if (session_table[j] != NULL && session_table[j]->wsi != wsi) {
+                                unsigned char buf[LWS_PRE + strlen(notify_msg)];
+                                memcpy(&buf[LWS_PRE], notify_msg, strlen(notify_msg));
+                                lws_write(session_table[j]->wsi, &buf[LWS_PRE], strlen(notify_msg), LWS_WRITE_TEXT);
+                            }
+                        }
+                        
+                        // Limpiar la sesión
                         free(session_table[i]);
                         session_table[i] = NULL;
-                        printf("Session data freed\n");                    
-
+                        printf("Sesión liberada\n");
                         break;
-                    }else{
-                        fprintf(file, "%s,%s\n", session_table[i]->user_id, session_table[i]->ip_address);  // Log user disconnecting
                     }
-                        
                 }
-
-                fclose(file);
-            
-                pthread_mutex_unlock(&file_mutex);
-
-                break;
-
-            default:
                 break;
         }
         return 0;
@@ -505,7 +459,13 @@
 
     
 
-    int main() {
+    int main(int argc, char *argv[]) {
+        if (argc != 2) {
+            fprintf(stderr, "Uso: %s <puertodelservidor>\n", argv[0]);
+            return 1;
+        }
+        int port = atoi(argv[1]);
+
         struct lws_context_creation_info info;
         struct lws_context *context;
         struct lws_protocols protocols[] = {
@@ -514,7 +474,7 @@
         };
 
         memset(&info, 0, sizeof(info));
-        info.port = 9000; // Server listens on port 9000
+        info.port = port; // puerto proporcionado
         info.protocols = protocols;
 
         context = lws_create_context(&info);
@@ -523,7 +483,7 @@
             return -1;
         }
 
-        printf("WebSocket server started on port %d\n", info.port);
+        printf("WebSocket server started on port %d\n", port);
 
         // Event loop to process WebSocket events
         time_t last_check = time(NULL);
