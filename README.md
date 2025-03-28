@@ -101,3 +101,96 @@ Al traer el JSON solo quitamos los componentes que no son necesarios como las ll
 
 gettime(char *buffer, size_t buffer_size)  
     Consigue el tiempo en formato timestamp
+
+
+
+
+Cliente:
+
+1. Definiciones y Variables Globales
+
+    MAX_MSG_LEN: Tamaño máximo de un mensaje (512 bytes).
+
+    MAX_CLIENTS: Número máximo de clientes admitidos (100).
+
+    struct lws *web_socket: Puntero al WebSocket activo.
+
+    const char *username: Nombre de usuario del cliente.
+
+    int running: Variable de control para mantener el programa en ejecución.
+
+2. Función message_send
+
+Envía mensajes JSON al servidor WebSocket según el tipo de acción:
+
+    register: Registra al usuario en el servidor.
+
+    broadcast: Envía un mensaje público a todos los usuarios.
+
+    private: Envía un mensaje privado a un usuario específico.
+
+    list_users: Solicita la lista de usuarios conectados.
+
+    user_info: Solicita información de un usuario específico.
+
+    change_status: Cambia el estado del usuario (ACTIVO, OCUPADO, INACTIVO).
+
+    disconnect: Notifica la desconexión del usuario.
+
+3. Función chat_callback (Manejador de eventos WebSocket)
+
+Controla los eventos del WebSocket:
+
+    LWS_CALLBACK_CLIENT_ESTABLISHED: Se activa cuando la conexión con el servidor se establece correctamente.
+
+    LWS_CALLBACK_CLIENT_RECEIVE: Procesa mensajes recibidos del servidor (JSON).
+
+    LWS_CALLBACK_CLIENT_WRITEABLE: Se activa cuando el cliente puede enviar datos.
+
+    LWS_CALLBACK_CLOSED: Se activa cuando la conexión con el servidor se cierra.
+
+4. Función show_help
+
+Muestra los comandos disponibles en el chat:
+
+/help               → Muestra la ayuda  
+/list               → Lista los usuarios conectados  
+/info <usuario>     → Muestra información de un usuario  
+/status <ESTADO>    → Cambia tu estado (ACTIVO, OCUPADO, INACTIVO)  
+/msg <usuario> <msg> → Envía un mensaje privado  
+/exit               → Sale del programa  
+
+5. Función receive_messages 
+
+Ejecuta un bucle que mantiene la conexión WebSocket activa y procesa eventos entrantes mediante lws_service.
+6. main() 
+
+Inicializa y valida los parámetros de entrada:
+
+    username → Nombre del usuario.
+
+    server_ip → Dirección IP del servidor WebSocket.
+
+    server_port → Puerto del servidor.
+
+Configura el contexto WebSocket con lws_create_context.
+
+Establece la conexión WebSocket con lws_client_connect_via_info.
+
+Lanza un hilo (pthread_create) para recibir mensajes de forma asíncrona.
+
+Maneja la entrada del usuario y ejecuta los comandos según corresponda.
+
+Finaliza la ejecución cerrando la conexión WebSocket y destruyendo el contexto.
+
+Flujo de Ejecución
+
+El usuario inicia el programa con:
+
+    ./cliente_chat usuario1 192.168.1.100 9000
+
+El cliente se conecta al servidor y se registra automáticamente.
+
+Se muestra el menú de comandos y el usuario puede interactuar en el chat.
+
+El programa mantiene la conexión hasta que el usuario escribe /exit.
