@@ -20,7 +20,6 @@ unsigned int hash(const char *key);
 struct hash_entry* create_entry(const char *key, const char *value);
 void insert(struct hash_table *table, const char *key, const char *value);
 char* get(struct hash_table *table, const char *key);
-void free_table(struct hash_table *table);
 void remove_quotes(char *str);
 char* trim(char *str);
 void clean_json_message(char *message);

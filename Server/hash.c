@@ -48,20 +48,6 @@ char* get(struct hash_table *table, const char *key) {
     return NULL; // Key not found
 }
 
-// Free the memory used by the hash table
-void free_table(struct hash_table *table) {
-    for (int i = 0; i < TABLE_SIZE; i++) {
-        struct hash_entry *entry = table->buckets[i];
-        while (entry != NULL) {
-            struct hash_entry *temp = entry;
-            entry = entry->next;
-            free(temp->key);
-            free(temp->value);
-            free(temp);
-        }
-    }
-}
-
 
 void remove_quotes(char *str) {
     if (str[0] == '"' && str[strlen(str) - 1] == '"') {
