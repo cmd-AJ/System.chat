@@ -183,7 +183,7 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                 char content[200] = {0};
                 char timestamp[20] = {0};
                 
-                if (sscanf(buffer, "{\"type\":\"private\",\"sender\":\"%[^\"]\",\"target\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
+                if (sscanf(buffer, "{\"type\":%*[ ]\"%*[^\"]\",%*[ ]\"sender\":%*[ ]\"%[^\"]\",%*[ ]\"target\":%*[ ]\"%[^\"]\",%*[ ]\"content\":%*[ ]\"%[^\"]\",%*[ ]\"timestamp\":%*[ ]\"%[^\"]\"}",
                           sender, target, content, timestamp) == 4) {
                     printf("\n[PRIVADO de %s] %s [%s]\n", sender, content, timestamp);
                 }
