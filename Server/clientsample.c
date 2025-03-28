@@ -61,7 +61,7 @@ int main(void) {
 
     memset(&ccinfo, 0, sizeof(ccinfo));
     ccinfo.context = context;
-    ccinfo.address = "localhost";  // Change to your WebSocket server address
+    ccinfo.address = "3.147.6.53";  // Change to your WebSocket server address
     ccinfo.port = 9000;            // Change to the server port
     ccinfo.path = "/";
     ccinfo.host = lws_canonical_hostname(context);

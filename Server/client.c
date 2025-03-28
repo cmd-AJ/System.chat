@@ -26,7 +26,7 @@ void message_send(const char *type, const char *target, const char *content) {
 
     if (strcmp(type, "register") == 0) {
         snprintf(message, sizeof(message), 
-                "{\"type\":\"register\",\"sender\":\"%s\",\"timestamp\":\"%s\"}",
+                "{\"type\":\"register\",\"sender\":\"%s\",\"content\":\"%s\"}",
                 username, time_str);
     }
     else if (strcmp(type, "broadcast") == 0) {
@@ -96,6 +96,8 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                 break;
             }
 
+            printf("%s", buffer);
+
             if (strstr(buffer, "\"type\": \"register_success\"") != NULL) {
                 char sender[100] = {0};
                 char content[200] = {0};
@@ -103,10 +105,12 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                 
                 if (sscanf(buffer, "{\"type\":\"register_success\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
                           sender, content, timestamp) == 3) {
-                    printf("\n[REGISTRO AUTOMÁTICO EXITOSO DE: %s | Mensaje: %s  [%s]\n", sender, content, timestamp);
+                    printf("\n[REGISTRO AUTOMÁTICO EXITOSO] %s [%s]\n", content, timestamp);
                 }
+
             }
-            else if (strstr(buffer, "\"type\": \"list_users_response\"") != NULL) {
+
+            else if (strstr(buffer, "\"list_users_response\"") != NULL) {
                 printf("Respuesta de lista recibida: %s\n", buffer);
     
                 // Buscar el contenido entre "content":[ y ]
