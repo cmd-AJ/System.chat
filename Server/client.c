@@ -26,7 +26,7 @@ void message_send(const char *type, const char *target, const char *content) {
 
     if (strcmp(type, "register") == 0) {
         snprintf(message, sizeof(message), 
-                "{\"type\":\"register\",\"sender\":\"%s\",\"timestamp\":\"%s\"}",
+                "{\"type\":\"register\",\"sender\":\"%s\",\"content\":\"%s\"}",
                 username, time_str);
     }
     else if (strcmp(type, "broadcast") == 0) {
@@ -82,7 +82,7 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
             printf("\n[CONEXIÓN ESTABLECIDA - Registro automático como %s]\n", username);
             web_socket = wsi;
-            message_send("status", NULL, "ACTIVO");
+            message_send("register", NULL, "ACTIVO");
             lws_callback_on_writable(wsi);
             break;
 
@@ -95,17 +95,34 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                 break;
             }
 
+            printf("%s", buffer);
+
             if (strstr(buffer, "\"type\": \"register_success\"") != NULL) {
                 char sender[100] = {0};
                 char content[200] = {0};
                 char timestamp[20] = {0};
                 
-                if (sscanf(buffer, "{\"type\":\"register_success\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
-                          sender, content, timestamp) == 3) {
-                    printf("\n[REGISTRO AUTOMÁTICO EXITOSO] %s [%s]\n", content, timestamp);
+                // Trim any leading/trailing whitespace (like newline characters)
+                char *end = buffer + strlen(buffer) - 1;
+                while (end > buffer && (*end == ' ' || *end == '\n')) {
+                    *end = '\0';
+                    --end;
                 }
+
+                // Use sscanf to parse the JSON string, with allowance for optional spaces
+                int result = sscanf(buffer, 
+                    "{\"type\": \"register_success\", \"sender\": \"%[^\"]\", \"content\": \"%[^\"]\", \"timestamp\": \"%[^\"]\"}",
+                    sender, content, timestamp);
+
+                if (result == 3) {
+                    printf("\n[REGISTRO AUTOMÁTICO EXITOSO] %s [%s]\n", content, timestamp);
+                } else {
+                    printf("Error parsing JSON: %d values read\n", result);
+                }
+
             }
-            else if (strstr(buffer, "\"type\": \"list_users_response\"") != NULL) {
+
+            else if (strstr(buffer, "\"list_users_response\"") != NULL) {
                 printf("Respuesta de lista recibida: %s\n", buffer);
     
                 // Buscar el contenido entre "content":[ y ]
