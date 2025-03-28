@@ -82,7 +82,8 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
             printf("\n[CONEXIÓN ESTABLECIDA - Registro automático como %s]\n", username);
             web_socket = wsi;
-            message_send("register", NULL, NULL); // Registro automático
+            message_send("status", NULL, "ACTIVO");
+            lws_callback_on_writable(wsi);
             break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE: {

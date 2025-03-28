@@ -212,14 +212,7 @@
                             }
                            
                         }
-                        
-                        if ((strcmp(type, "broadcast") == 0))
-                        {
-                            char *user_target = get(&table, "sender");
-                            char *contenido = get(&table, "content");
-                            char *time = get(&table, "timestamp");
-                            /* code */
-                        }
+            
 
                         if ((strcmp(type, "private") == 0))
                         {
@@ -328,22 +321,6 @@
                            
                         }
 
-                        if ((strcmp(type, "list_users") == 0)){
-
-                            char *user = get(&table, "sender");
-                            
-                            for (int i = 0; i < MAX_CLIENTS; i++) {
-                                if (session_table[i] != NULL) {
-
-                                    printf(session_table[i]->user_id);
-                                    printf(session_table[i]->status);
-                                    
-
-                                }
-                            }
-
-                        }
-                        
 
                         if ((strcmp(type, "user_info") == 0)) {
                             char *user_target = get(&table, "target");
@@ -411,27 +388,35 @@
                             char *user = get(&table, "sender");
                             char ip[128];
                             char name[128];
+                        
                             lws_get_peer_addresses(lws_get_network_wsi(wsi), lws_get_socket_fd(wsi), name, sizeof(name), ip, sizeof(ip));
                         
                             pthread_mutex_lock(&file_mutex);
                         
-                            
-                            FILE *file = fopen("registries.txt", "w");
+                            FILE *file = fopen("registries.txt", "w");  // ⚠️ This overwrites the file! Use "a" for appending.
                             if (file == NULL) {
-                                sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\",\"Error Getting OPENING FILE \": \"Descripción del error\",\"timestamp\": \"%s\"}", timestamp);
+                                sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot open file\", \"timestamp\": \"%s\"}", timestamp);
                                 perror("Error opening file");
-                                pthread_mutex_unlock(&file_mutex);  
-                                return 1;
+                                pthread_mutex_unlock(&file_mutex);
+                                return -1;  // Return -1 to indicate an issue
                             }
                         
-                            fprintf(file, "%s,%s\n", user, ip);  // Example: writing the user and IP address to the file
-                        
-                            fclose(file);  // Close the file after writing
+                            fprintf(file, "%s,%s\n", user, ip);  // Log user disconnecting
+                            fclose(file);
                         
                             pthread_mutex_unlock(&file_mutex);
                         
-                            // Prepare the response message for the disconnected user
-                            sprintf(cleaned_message, "{\"type\": \"user_disconnected\", \"sender\": \"%s\", \"content\": \"%s Ha salido\", \"timestamp\": \"%s\"}", session->user_id, session->user_id, timestamp);
+                            // Notify others about the disconnection
+                            sprintf(cleaned_message, 
+                                "{\"type\": \"user_disconnected\", \"sender\": \"%s\", \"content\": \"%s has disconnected\", \"timestamp\": \"%s\"}",
+                                session->user_id, session->user_id, timestamp);
+                        
+                            lws_write(wsi, (unsigned char *)cleaned_message, strlen(cleaned_message), LWS_WRITE_TEXT);
+
+
+                            lws_close_reason(wsi, LWS_CLOSE_STATUS_NORMAL, (unsigned char *)cleaned_message, strlen(cleaned_message));
+                        
+                            return -1;  // 🔴 **Returning -1 tells LWS to close the connection**
                         }
                         
 
