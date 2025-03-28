@@ -90,8 +90,6 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
             char buffer[MAX_MSG_LEN + 1];
             strncpy(buffer, (char *)in, len);
             buffer[len] = '\0';
-            printf("%s\n", buffer);
-
             if (len == 0 || buffer[0] != '{') {
                 break;
             }
@@ -142,11 +140,8 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                     }
                 }
             }
-            else if (strstr(buffer, "\"type\": \"user_info_response\"") != NULL) {
+            else if (strstr(buffer, "\"user_info_response\"") != NULL) {
                 // Respuesta con información de un usuario
-
-                printf("%s", buffer);
-
                 char target[100] = {0};
                 char ip[100] = "No disponible";
                 char status[20] = "No disponible";
