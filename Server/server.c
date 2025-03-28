@@ -174,7 +174,6 @@
                                 char *ipaddress = strtok(NULL, ",");
                                                             
                                 if (strcmp(register_user, user) == 0){
-                                    printf("DETECTED ITS ALREADY REGISTERED\n");
                                     already_registered = 1;
         
                                 }        
@@ -185,9 +184,6 @@
                             pthread_mutex_unlock(&file_mutex);
                             if (already_registered == 0)
                             {
-                                printf("registered %s\n",register_user);
-                                printf("registered IP %s\n",ip);    /* code */
-
                                 strncpy(session->user_id, register_user, sizeof(session->user_id) - 1);
                                 session->user_id[sizeof(session->user_id) - 1] = '\0'; // Ensure null termination
                             
@@ -235,10 +231,7 @@
 
                             for (int i = 0; i < MAX_CLIENTS; i++) {
                                 if (session_table[i] != NULL) {
-                                    printf("Session %d:\n", i);
-                                    printf("User ID: %s\n", session_table[i]->user_id);
-                                    printf("User Target ID: %s\n", user);
-                                    printf("IP Address: %s\n", session_table[i]->ip_address);
+
                         
                                     // If the user ID matches the target user
                                     if (strcmp(session_table[i]->user_id, user) == 0) {
@@ -274,14 +267,10 @@
 
                             for (int i = 0; i < MAX_CLIENTS; i++) {
                                 if (session_table[i] != NULL) {
-                                    printf("Session %d:\n", i);
-                                    printf("User ID: %s\n", session_table[i]->user_id);
-                                    printf("User Target ID: %s\n", user);
-                                    printf("IP Address: %s\n", session_table[i]->ip_address);
+
                         
                                     // If the user ID matches the target user
                                  
-                                    printf("Sending message to %s\n", session_table[i]->user_id);
                                     
                                     // Prepare the message to send to the target client
                                     char msg[1024];
@@ -364,8 +353,6 @@
                         
                                 if (user != NULL) {  // Ensure valid tokens
                                     if (strcmp(user_target, user) == 0) {
-                                        printf("GOT ONE ALIVE\n");
-                                        printf("IP Address: %s\n", ip_address);
                                         for (int i = 0; i < MAX_CLIENTS; i++) {
                                             if (session_table[i] != NULL) {
             
@@ -399,9 +386,6 @@
                         {
                             char *user = get(&table, "sender");
                             char *content = get(&table, "content");
-                            
-                            printf("Status %s",session->status);
-                            
                             strcpy(session->status, content); 
 
 
@@ -467,6 +451,7 @@
                     memcpy(&buf[LWS_PRE], cleaned_message, len);
         
                     // Send back the message
+                    printf(cleaned_message);
                     if (lws_write(wsi, &buf[LWS_PRE], len, LWS_WRITE_TEXT) < 0) {
                         printf("Error sending message back to client\n");
                     }

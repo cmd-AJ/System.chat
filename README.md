@@ -15,6 +15,12 @@ Client
 gcc client.c -o client -lwebsockets 
 
 
+## Run executables
+    Para correr el programa servidor
+---
+###     ./server_program   
+---
+###     ./client
 
 ---
 ## Server Functions
@@ -71,7 +77,26 @@ Disconnect:
     Se bloquea el arhivo para podes escribir a todos los usuarios que estan conectados. El que se va a desconectar no se escribe en el archivo, una vez realizado esto se debloquea el mutex. 
 
     
+Funciones Extras dentro de hash.c
+
+hash(const char *key)
+    Crea un objeto HASH donde guardamos el valor y la llave tipo JSON
+
+
+create_entry(const char *key, const char *value)
+    Crea una tabla para almacenar objeto tipo HASH donde guardamos a todos los datos del JSON
+
+    Viene Insert y Get para conseguir e insertar los HASH a la tabla.
+
+
+char *trim(char *str) 
+    Solo quita el espaciado que hay en los datos 
+
+
+clean_json_message:
+    Al traer el JSON solo quitamos los componentes que no son necesarios como las llaves
 
 
 
-
+gettime(char *buffer, size_t buffer_size)  
+    Consigue el tiempo en formato timestamp
