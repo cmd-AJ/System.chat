@@ -5,6 +5,7 @@
     #include <unistd.h>
     #include "hash.h"
     #include <pthread.h>
+    #include <time.h>     
 
     #define MAX_CLIENTS 100
     #define TABLE_SIZE 10
@@ -21,6 +22,19 @@
     pthread_mutex_t file_mutex = PTHREAD_MUTEX_INITIALIZER; 
     // Global array of session info
     static struct session_info *session_table[MAX_CLIENTS] = {0};
+
+
+    void check_all_users() {
+        printf("Performing periodic user check...\n");
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (session_table[i] != NULL) {
+                printf("User: %s (IP: %s), STATUS: %s  is still connected\n", 
+                       session_table[i]->user_id, session_table[i]->ip_address, session_table[i]->status);
+                       strcpy(session_table[i]->status, "INACTIVE");
+            }
+        }
+    }
+    
 
     static int callback_websocket(struct lws *wsi, enum lws_callback_reasons reason,
                                 void *user, void *in, size_t len) {
@@ -204,7 +218,7 @@
                             }else{
                                 char hostname[256];
                                 if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                    sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"%s\",\"content\": \"Descripción del error\",\"timestamp\": \"%s\"}",hostname, timestamp);
+                                    sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"%s\",\"content\": \"Usuario Registrado\",\"timestamp\": \"%s\"}",hostname, timestamp);
                                 }else {
                                     sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\",\"content\": \"Error Getting the HOST NAME\",\"timestamp\": \"%s\"}", timestamp);
                                 }
@@ -456,20 +470,45 @@
                     if (lws_write(wsi, &buf[LWS_PRE], len, LWS_WRITE_TEXT) < 0) {
                         printf("Error sending message back to client\n");
                     }
+
                     break;
                 }
 
             case LWS_CALLBACK_CLOSED:
+
+                char timestamp[30];
+                gettime(timestamp, sizeof(timestamp));
+
+                pthread_mutex_lock(&file_mutex);
+                    
+                FILE *file = fopen("registries.txt", "w");  
+                if (file == NULL) {
+                    printf( "{\"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot open file\", \"timestamp\": \"%s\"}",timestamp);
+                    perror("Error opening file");
+                    pthread_mutex_unlock(&file_mutex);
+                    return -1;  // Return -1 to indicate an issue
+                }
+            
                 // Handle client disconnect
                 for (int i = 0; i < MAX_CLIENTS; i++) {
                     if (session_table[i] != NULL && session_table[i]->wsi == wsi) {
                         // Free the session memory when the client disconnects
+                        
                         free(session_table[i]);
                         session_table[i] = NULL;
-                        printf("Session data freed\n");
+                        printf("Session data freed\n");                    
+
                         break;
+                    }else{
+                        fprintf(file, "%s,%s\n", session_table[i]->user_id, session_table[i]->ip_address);  // Log user disconnecting
                     }
+                        
                 }
+
+                fclose(file);
+            
+                pthread_mutex_unlock(&file_mutex);
+
                 break;
 
             default:
@@ -502,8 +541,14 @@
         printf("WebSocket server started on port %d\n", info.port);
 
         // Event loop to process WebSocket events
+        time_t last_check = time(NULL);
         while (1) {
             lws_service(context, 100); // Run event loop
+
+            if (time(NULL) - last_check >= 30) {
+                check_all_users();
+                last_check = time(NULL);
+            }
         }
 
         lws_context_destroy(context);
