@@ -98,7 +98,7 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
 
             printf("%s", buffer);
 
-            if (strstr(buffer, "\"type\": \"register_success\"") != NULL) {
+            if (strstr(buffer, "\"register_success\"") != NULL) {
                 char sender[100] = {0};
                 char content[200] = {0};
                 char timestamp[20] = {0};
