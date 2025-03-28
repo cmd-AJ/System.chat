@@ -277,7 +277,7 @@
 
                                 }
                             }
-                            strcat(arrayusers, " ]"); 
+                            strcat(arrayusers, "]"); 
                             printf("Lista de usuarios a enviar: %s\n", arrayusers);
     
                             sprintf(cleaned_message,"{\"type\":\"list_users_response\",\"sender\":\"server\",\"content\":%s,\"timestamp\":\"%s\"}",

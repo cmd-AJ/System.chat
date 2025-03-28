@@ -82,7 +82,7 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
             printf("\n[CONEXIÓN ESTABLECIDA - Registro automático como %s]\n", username);
             web_socket = wsi;
-            message_send("status", NULL, "ACTIVO");
+            message_send("register", NULL, "ACTIVO");
             lws_callback_on_writable(wsi);
             break;
 
@@ -90,6 +90,7 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
             char buffer[MAX_MSG_LEN + 1];
             strncpy(buffer, (char *)in, len);
             buffer[len] = '\0';
+            printf("%s\n", buffer);
 
             if (len == 0 || buffer[0] != '{') {
                 break;
@@ -102,7 +103,7 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                 
                 if (sscanf(buffer, "{\"type\":\"register_success\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
                           sender, content, timestamp) == 3) {
-                    printf("\n[REGISTRO AUTOMÁTICO EXITOSO] %s [%s]\n", content, timestamp);
+                    printf("\n[REGISTRO AUTOMÁTICO EXITOSO DE: %s | Mensaje: %s  [%s]\n", sender, content, timestamp);
                 }
             }
             else if (strstr(buffer, "\"type\": \"list_users_response\"") != NULL) {
