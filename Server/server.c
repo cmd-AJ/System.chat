@@ -85,18 +85,13 @@
 
                 printf("Default user created with ID: %s and IP address: %s\n", session->user_id, session->ip_address);
                 break;
-            
                 case LWS_CALLBACK_RECEIVE: {
-
                     struct session_info *session = (struct session_info *)lws_wsi_user(wsi);
                     if (!session) {
-                        
                         printf("{ \"type\": \"error\", \"sender\": \"server\",\"Error Getting  SESSION TO HOST \": \"Descripción del error\",\"timestamp\": \"NA\"}");
                         return -1;
                     }
-
                     
-                
                     struct hash_table table = {0};
                     char *original_message = (char *)in;
                     char *cleaned_message =  (char *)in;
@@ -131,19 +126,14 @@
                         }
                     }
 
-                    
-
-
                     //I get the type of it
 
                     char *type = get(&table, "type");
-
 
                     char timestamp[30];
                     gettime(timestamp, sizeof(timestamp));
        
                     
-
                     if (type != NULL) {
                         
                         if (strcmp(type, "register") == 0)
@@ -296,7 +286,7 @@
                                 return 1;
                             }
 
-                            char status[30]= "NO DISPONIBLE";
+                            char status[30]= "INACTIVE";
                         
                             char buffer[BUFFER_SIZE];  // Buffer to hold each line
                             while (fgets(buffer, sizeof(buffer), file)) {  // Read one line at a time
@@ -308,9 +298,6 @@
                                 char *user = strtok(temp_buffer, ",");
                                 char *ip_address = strtok(NULL, ",");
                                 
-
-                                
-                        
                                 if (user != NULL) {  // Ensure valid tokens
                                     if (strcmp(user_target, user) == 0) {
                                         for (int i = 0; i < MAX_CLIENTS; i++) {
