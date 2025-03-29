@@ -4,7 +4,6 @@
 #include <libwebsockets.h>
 #include <string.h>
 #include <time.h>
-#include <ctype.h>
 
 #define MAX_MSG_LEN 512   // tamaño mensaje
 #define MAX_CLIENTS 100
@@ -61,6 +60,9 @@ void message_send(const char *type, const char *target, const char *content) {
                     "{\"type\":\"change_status\",\"sender\":\"%s\",\"content\":\"%s\",\"timestamp\":\"%s\"}",
                     username, content, time_str);
             printf("\n[SOLICITANDO cambio de estado a %s...]\n", content);
+        } else {
+            printf("\n[ERROR] Estado debe ser: ACTIVO, OCUPADO o INACTIVO\n");
+            return;
         }
     }
     else if (strcmp(type, "disconnect") == 0) {
@@ -88,25 +90,40 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
             char buffer[MAX_MSG_LEN + 1];
             strncpy(buffer, (char *)in, len);
             buffer[len] = '\0';
+
             if (len == 0 || buffer[0] != '{') {
                 break;
-            };
+            }
 
-            if (strstr(buffer, "\"register_success\"") != NULL) {
+            printf("%s", buffer);
+
+            if (strstr(buffer, "\"type\": \"register_success\"") != NULL) {
                 char sender[100] = {0};
                 char content[200] = {0};
                 char timestamp[20] = {0};
                 
-                if (sscanf(buffer, "{\"type\":\"register_success\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
-                          sender, content, timestamp) == 3) {
+                // Trim any leading/trailing whitespace (like newline characters)
+                char *end = buffer + strlen(buffer) - 1;
+                while (end > buffer && (*end == ' ' || *end == '\n')) {
+                    *end = '\0';
+                    --end;
+                }
+
+                // Use sscanf to parse the JSON string, with allowance for optional spaces
+                int result = sscanf(buffer, 
+                    "{\"type\": \"register_success\", \"sender\": \"%[^\"]\", \"content\": \"%[^\"]\", \"timestamp\": \"%[^\"]\"}",
+                    sender, content, timestamp);
+
+                if (result == 3) {
                     printf("\n[REGISTRO AUTOMÁTICO EXITOSO] %s [%s]\n", content, timestamp);
+                } else {
+                    printf("Error parsing JSON: %d values read\n", result);
                 }
 
             }
 
             else if (strstr(buffer, "\"list_users_response\"") != NULL) {
-                char *json_end = strrchr(buffer, '}');
-                if (json_end) *(json_end + 1) = '\0';
+                printf("Respuesta de lista recibida: %s\n", buffer);
     
                 // Buscar el contenido entre "content":[ y ]
                 char *content_start = strstr(buffer, "\"content\":[");
@@ -114,8 +131,9 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                     content_start += 10; // Saltar "\"content\":["
                     char *content_end = strstr(content_start, "]");
                     if (content_end) {
+                        int content_len = content_end - content_start;
                         char content[500] = {0};
-                        strncpy(content, content_start, content_end - content_start);
+                        strncpy(content, content_start, content_len);
                         
                         printf("\n═════ USUARIOS CONECTADOS ═════\n");
                         
@@ -124,9 +142,9 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                         while (user != NULL) {
                             // Eliminar comillas y espacios
                             char *ptr = user;
-                            while (*ptr && (isspace(*ptr) || *ptr == '"' || *ptr == '[' || *ptr == ']')) ptr++;
+                            while (*ptr == ' ' || *ptr == '"') ptr++;
                             char *end = ptr + strlen(ptr) - 1;
-                            while (end > ptr && (isspace(*end) || *end == '"' || *end == '[' || *end == ']')) end--;
+                            while (end > ptr && (*end == ' ' || *end == '"')) end--;
                             *(end + 1) = '\0';
                             
                             if (*ptr) printf("• %s\n", ptr);
@@ -136,109 +154,48 @@ static int chat_callback(struct lws *wsi, enum lws_callback_reasons reason, void
                     }
                 }
             }
-            else if (strstr(buffer, "\"user_info_response\"") != NULL) {
-
-                char *json_end = strrchr(buffer, '}');
-                if (json_end) *(json_end + 1) = '\0';
+            else if (strstr(buffer, "\"type\": \"user_info_response\"") != NULL) {
                 // Respuesta con información de un usuario
-                char target[100] = {0};
-                char ip[100] = "No Disponible";
-                char status[20] = "No Disponible";
-                char timestamp[20] = "No Disponible";
-                char temp_buffer[MAX_MSG_LEN + 1];
 
-                strncpy(temp_buffer, buffer, MAX_MSG_LEN);
-                temp_buffer[MAX_MSG_LEN] = '\0';
-                //time
-                char *ts_start = strstr(temp_buffer, "\"timestamp\":");
-                if (ts_start) {
-                    ts_start += strlen("\"timestamp\":");
-                    while (*ts_start == ' ' || *ts_start == '"') ts_start++;
-                    char *ts_end = strchr(ts_start, '"');
-                    if (ts_end) {
-                        strncpy(timestamp, ts_start, ts_end - ts_start);
-                        timestamp[ts_end - ts_start] = '\0';
-                    }
-                }
+                printf("%s", buffer);
+
+                char target[100] = {0};
+                char ip[100] = "No disponible";
+                char status[20] = "No disponible";
+                 char timestamp[20] = "No disponible";
                 
-                // Extraemos target (puede estar en dos ubicaciones diferentes)
-                char *target_start = strstr(temp_buffer, "\"target\":");
-                if (!target_start) target_start = strstr(temp_buffer, "\"user\":");
-                if (target_start) {
-                    target_start += strlen("\"target\":");
-                    if (target_start[0] == '\"') target_start++;
-                    char *target_end = strchr(target_start, ',');
-                    if (!target_end) target_end = strchr(target_start, '}');
-                    if (target_end) {
-                        // Eliminar comillas finales si existen
-                        char *end = target_end;
-                        while (end > target_start && (end[-1] == '\"' || end[-1] == ' ')) end--;
-                        strncpy(target, target_start, end - target_start);
-                        target[end - target_start] = '\0';
-                    }
-                }
-                
-                // Extraemos status
-                char *status_start = strstr(temp_buffer, "\"status\":");
-                if (status_start) {
-                    status_start += strlen("\"status\":");
-                    while (*status_start == ' ' || *status_start == '"') status_start++;
-                    char *status_end = strchr(status_start, ',');
-                    if (!status_end) status_end = strchr(status_start, '}');
-                    if (status_end) {
-                        // Eliminar comillas finales si existen
-                        char *end = status_end;
-                        while (end > status_start && (end[-1] == '\"' || end[-1] == ' ')) end--;
-                        strncpy(status, status_start, end - status_start);
-                        status[end - status_start] = '\0';
-                    }
-                }
-                
-                // Extraemos IP si existe
-                char *ip_start = strstr(temp_buffer, "\"ip\":");
-                if (ip_start) {
-                    ip_start += strlen("\"ip\":");
-                    while (*ip_start == ' ' || *ip_start == '"') ip_start++;
-                    char *ip_end = strchr(ip_start, ',');
-                    if (!ip_end) ip_end = strchr(ip_start, '}');
-                    if (ip_end) {
-                        // Eliminar comillas finales si existen
-                        char *end = ip_end;
-                        while (end > ip_start && (end[-1] == '\"' || end[-1] == ' ')) end--;
-                        strncpy(ip, ip_start, end - ip_start);
-                        ip[end - ip_start] = '\0';
-                    }
-                }
+                sscanf(buffer, "{\"type\":\"user_info_response\"%*[^,],\"target\":\"%[^\"]\",", target);
+                sscanf(buffer, "%*[^,]\"content\":{\"ip\":\"%[^\"]\",\"status\":\"%[^\"]\"}", ip, status);
+                sscanf(buffer, "%*[^,]\"timestamp\":\"%[^\"]\"", timestamp);
+
                 printf("\n════ INFORMACIÓN DE USUARIO ════\n");
-                printf(" • Nombre:     %s\n", target[0] ? target : "No disponible");
-                printf(" • Estado:     %s\n", status);
-                if (strcmp(ip, "No disponible") != 0) {
-                    printf(" • IP:         %s\n", ip);
-                }
-                printf(" • Actualizado: %s\n", timestamp);
+                printf(" Nombre: %s\n", target[0] ? target : "No disponible");
+                printf(" Estado: %s\n", status);
+                printf(" IP: %s\n", ip);
+                printf(" Actualizado: %s\n", timestamp);
                 printf("══════════════════════════════\n");
             }
-            else if (strstr(buffer, "\"broadcast\"") != NULL) {
+            else if (strstr(buffer, "\"type\": \"broadcast\"") != NULL) {
                 // Mensaje broadcast recibido
                 char sender[100] = {0};
                 char content[200] = {0};
                 char timestamp[20] = {0};
                 
-                if (sscanf(buffer, "{\"type\":%*[ ]\"%*[^\"]\",%*[ ]\"sender\":%*[ ]\"%[^\"]\",%*[ ]\"content\":%*[ ]\"%[^\"]\",%*[ ]\"timestamp\":%*[ ]\"%[^\"]\"}",
+                if (sscanf(buffer, "{\"type\":\"broadcast\",\"sender\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
                           sender, content, timestamp) == 3) {
                     if (strcmp(sender, username) != 0) {
                         printf("\n[%s] %s [%s]\n", sender, content, timestamp);
                     }
                 }
             }
-            else if (strstr(buffer, "\"private\"") != NULL) {
+            else if (strstr(buffer, "\"type\": \"private\"") != NULL) {
                 // Mensaje privado recibido
                 char sender[100] = {0};
                 char target[100] = {0};
                 char content[200] = {0};
                 char timestamp[20] = {0};
                 
-                if (sscanf(buffer, "{\"type\":%*[ ]\"%*[^\"]\",%*[ ]\"sender\":%*[ ]\"%[^\"]\",%*[ ]\"target\":%*[ ]\"%[^\"]\",%*[ ]\"content\":%*[ ]\"%[^\"]\",%*[ ]\"timestamp\":%*[ ]\"%[^\"]\"}",
+                if (sscanf(buffer, "{\"type\":\"private\",\"sender\":\"%[^\"]\",\"target\":\"%[^\"]\",\"content\":\"%[^\"]\",\"timestamp\":\"%[^\"]\"}",
                           sender, target, content, timestamp) == 4) {
                     printf("\n[PRIVADO de %s] %s [%s]\n", sender, content, timestamp);
                 }
@@ -389,8 +346,8 @@ int main(int argc, char *argv[]) {
             }
             else if (strncmp(command, "/status", 7) == 0) {
                 char *new_status = strtok(command + 8, " ");
-                if (new_status && (strcmp(new_status, "ACTIVO") == 0 || 
-                    strcmp(new_status, "OCUPADO") == 0 || strcmp(new_status, "INACTIVO") == 0)) {
+                if (new_status && (strcmp(new_status, "\"ACTIVO\"") == 0 || 
+                    strcmp(new_status, "\"OCUPADO\"") == 0 || strcmp(new_status, "\"INACTIVO\"") == 0)) {
                     message_send("change_status", NULL, new_status);
                 } else {
                     printf("\n[ERROR] Estado no válido. Usa: ACTIVO, OCUPADO o INACTIVO\n");
