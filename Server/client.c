@@ -346,8 +346,8 @@ int main(int argc, char *argv[]) {
             }
             else if (strncmp(command, "/status", 7) == 0) {
                 char *new_status = strtok(command + 8, " ");
-                if (new_status && (strcmp(new_status, "\"ACTIVO\"") == 0 || 
-                    strcmp(new_status, "\"OCUPADO\"") == 0 || strcmp(new_status, "\"INACTIVO\"") == 0)) {
+                if (new_status && (strcmp(new_status, "ACTIVO") == 0 || 
+                    strcmp(new_status, "OCUPADO") == 0 || strcmp(new_status, "INACTIVO") == 0)) {
                     message_send("change_status", NULL, new_status);
                 } else {
                     printf("\n[ERROR] Estado no válido. Usa: ACTIVO, OCUPADO o INACTIVO\n");

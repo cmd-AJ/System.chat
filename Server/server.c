@@ -333,7 +333,7 @@
 
                             char hostname[256];
                             if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": { \"ip\": \"%s\", \"status\": \"%s\", \"timestamp\": \"%s\"}", hostname, session->user_id, ip_address, status, timestamp);
+                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": { \"ip\": \"%s\", \"status\": \"%s\" }, \"timestamp\": \"%s\"}", hostname, session->user_id, ip_address, status, timestamp);
                             } else {
                                 sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot Find Hostname\", \"timestamp\": \"%s\"}", timestamp);
                             }
@@ -351,7 +351,7 @@
 
                             char hostname[256];
                             if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"content\": { \"user\": %s, \"status\": %s  }, \"timestamp\": \"%s\"}", hostname,session->user_id, session->status ,timestamp);
+                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"content\": { \"user\": %s, \"status\": \"%s\"  }, \"timestamp\": \"%s\"}", hostname,session->user_id, session->status ,timestamp);
                             } else {
                                 sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot Find Hostname\", \"timestamp\": \"%s\"}", timestamp);
                             }
