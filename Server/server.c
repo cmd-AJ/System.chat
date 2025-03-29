@@ -105,34 +105,34 @@
 
                     
                     char *jsonitems[TABLE_SIZE];
+        
                     char *par = strtok(cleaned_message, ","); 
                     int counter = 0;
-                
-                    // Tokenize by commas
-                    while (par != NULL && counter < TABLE_SIZE) {
+                    while (par != NULL)
+                    {
                         jsonitems[counter] = par;
-                        counter++;
+                        counter = counter + 1;
                         par = strtok(NULL, ",");
                     }
-                
-                    // Parse each item
-                    for (int i = 0; i < counter; i++) {
-                        // Tokenize each item by colon to separate key and value
+                    
+                    for (int i = 0; i < counter; i++){
+        
+                        // Tokenize by colon
                         char *key = strtok(jsonitems[i], ":");
                         char *value = strtok(NULL, ":");
-                
+        
                         if (key != NULL && value != NULL) {
-                            // Trim and remove quotes
                             key = trim(key);
                             remove_quotes(key);
                             value = trim(value);
                             remove_quotes(value);
-                
-                            // Insert into table
-                            insert(jsonitems, key, value);
+        
+                            insert(&table, key, value);
                         }
                     }
+
                     
+
 
                     //I get the type of it
 
@@ -333,7 +333,7 @@
 
                             char hostname[256];
                             if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": { \"ip\": \"%s\", \"status\": \"%s\" }, \"timestamp\": \"%s\"}", hostname, session->user_id, ip_address, status, timestamp);
+                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": { \"ip\": \"%s\", \"status\": \"%s\", \"timestamp\": \"%s\"}", hostname, session->user_id, ip_address, status, timestamp);
                             } else {
                                 sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot Find Hostname\", \"timestamp\": \"%s\"}", timestamp);
                             }
@@ -351,7 +351,7 @@
 
                             char hostname[256];
                             if (gethostname(hostname, sizeof(hostname)) == 0) {
-                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"content\": { \"user\": %s, \"status\": \"%s\", \"timestamp\": \"%s\"}", hostname,session->user_id, session->status ,timestamp);
+                                sprintf(cleaned_message, "{\"type\": \"user_info_response\", \"sender\": \"%s\", \"content\": { \"user\": %s, \"status\": %s  }, \"timestamp\": \"%s\"}", hostname,session->user_id, session->status ,timestamp);
                             } else {
                                 sprintf(cleaned_message, "{ \"type\": \"error\", \"sender\": \"server\", \"Error\": \"Cannot Find Hostname\", \"timestamp\": \"%s\"}", timestamp);
                             }
