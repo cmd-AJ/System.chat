@@ -105,35 +105,34 @@
 
                     
                     char *jsonitems[TABLE_SIZE];
-        
                     char *par = strtok(cleaned_message, ","); 
                     int counter = 0;
-                    while (par != NULL)
-                    {
+                
+                    // Tokenize by commas
+                    while (par != NULL && counter < TABLE_SIZE) {
                         jsonitems[counter] = par;
-                        counter = counter + 1;
+                        counter++;
                         par = strtok(NULL, ",");
                     }
-                    
-                    for (int i = 0; i < counter; i++){
-        
-                        // Tokenize by colon
+                
+                    // Parse each item
+                    for (int i = 0; i < counter; i++) {
+                        // Tokenize each item by colon to separate key and value
                         char *key = strtok(jsonitems[i], ":");
                         char *value = strtok(NULL, ":");
-        
+                
                         if (key != NULL && value != NULL) {
+                            // Trim and remove quotes
                             key = trim(key);
                             remove_quotes(key);
                             value = trim(value);
                             remove_quotes(value);
-        
-                            insert(&table, key, value);
+                
+                            // Insert into table
+                            insert(jsonitems, key, value);
                         }
                     }
-
                     
-        
-
 
                     //I get the type of it
 
