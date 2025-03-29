@@ -21,9 +21,9 @@ Client
 ## Run executables
     Para correr el programa servidor
 ---
-    ./server_program   
+    ./server_program [port]
 ---
-    ./client
+    ./websocket_client [Nombre Usuario] [IP] [Port]
 
 ---
 ## Server Functions
@@ -141,13 +141,13 @@ Envía mensajes JSON al servidor WebSocket según el tipo de acción:
 
 Controla los eventos del WebSocket:
 
-    LWS_CALLBACK_CLIENT_ESTABLISHED: Se activa cuando la conexión con el servidor se establece correctamente.
+    LWS_CALLBACK_CLIENT_ESTABLISHED: Se activa cuando la conexión con el servidor se establece correctamente, registra al usuario.
 
-    LWS_CALLBACK_CLIENT_RECEIVE: Procesa mensajes recibidos del servidor (JSON).
+    LWS_CALLBACK_CLIENT_RECEIVE: Procesa mensajes recibidos del servidor (JSON) y los parsea.
 
     LWS_CALLBACK_CLIENT_WRITEABLE: Se activa cuando el cliente puede enviar datos.
 
-    LWS_CALLBACK_CLOSED: Se activa cuando la conexión con el servidor se cierra.
+    LWS_CALLBACK_CLOSED: Se activa cuando la conexión con el servidor se cierra y actualiza estado de ejecucion.
 
 4. Función show_help
 
